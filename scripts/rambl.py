@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-RBRA: Reference-based Ribosome Assembly
+RAMBL: Reference-based Ribosome Assembly
 ---------------------------------------
 It is to assemble full-length 16S rRNA genes of strains
 using metagenomics sequencing data.
@@ -202,11 +202,11 @@ def strain_call(TmpDir):
 
 
     
-def rbra_pipe(GeneData,SeqData):
+def rambl_pipe(GeneData,SeqData):
     global opts,ExecDir
 
     WorkDir = os.getcwd()
-    TmpDir = os.path.join(WorkDir,"RBRA_work_dir_%s"%(\
+    TmpDir = os.path.join(WorkDir,"RAMBL_work_dir_%s"%(\
              ''.join(random.sample('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',5))))
     if os.path.exists(TmpDir):
         subprocess.call(['rm','-rf',TmpDir])
@@ -250,7 +250,7 @@ if __name__=="__main__":
         parser = argparse.ArgumentParser(description=globals()['__doc__'],epilog=textwrap.dedent('''\
                                          Examples\n\
                                          --------\n\
-                                         1. rbra [options] data_info -v\n\n \
+                                         1. rambl [options] data_info -v\n\n \
                                          '''),\
                                          formatter_class=argparse.RawTextHelpFormatter)
         parser.add_argument('data_info',help='data collection',metavar="DATA")
@@ -295,7 +295,7 @@ if __name__=="__main__":
         ExecDir = os.path.dirname(sys.argv[0])
         ExecDir = os.path.abspath(ExecDir)
 
-        rbra_pipe(GeneData,SeqData)
+        rambl_pipe(GeneData,SeqData)
 
         # TODO: complete
         if opts.verbose:
