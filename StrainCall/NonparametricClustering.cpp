@@ -138,7 +138,8 @@ void PartialOrderGraph::np_bayes_clustering(vector<Strain>& strains,
     vector<DoubleL> posterior1(S,0);
 
     std::random_device rd;
-    std::mt19937 gen(rd());
+    //std::mt19937 gen(rd());
+    std::mt19937 gen(1234);
 
     for (auto it=strains.begin(); it!=strains.end(); ++it)
     {
@@ -156,7 +157,7 @@ void PartialOrderGraph::np_bayes_clustering(vector<Strain>& strains,
     }
 
     // sampling n times
-    n = min(n,30000/read_size);
+    n = min(n,40000/read_size);
     for (i=0; i<n; i++)
     {
         // scan through reads
@@ -282,6 +283,20 @@ void PartialOrderGraph::streaming_clustering(vector<Strain>& strains, ReadPairs&
     level_read_count = 0;
     while (!level_node.empty())
     {
+        // debug
+        if (0){
+        if (!level_strains.empty()){
+            cerr << "------------------------------" << endl
+                 << "before clustering" << endl
+                 << "level: " << level << endl;
+
+            for (auto ls_iter = level_strains.begin(); ls_iter!=level_strains.end(); ls_iter++)
+            {
+                cerr << ls_iter->strain_seq() << "\t" << ls_iter->abundance << endl;
+            }
+        }
+        }
+
         // ---------------------------------
         // this part is level-order visiting
         // ---------------------------------
@@ -386,30 +401,48 @@ void PartialOrderGraph::streaming_clustering(vector<Strain>& strains, ReadPairs&
             // clustering if having branches
             if (branching and !level_reads.empty())
             {
+                map<string,DoubleL> A_prior,A_posterior;
+                // abundance before clustering
+                for (auto lsiter = level_strains.begin(); lsiter!=level_strains.end(); lsiter++)
+                {
+                    A_prior[lsiter->strain_seq()] = lsiter->abundance;
+                }
+
+
+                // probabilistic clustering
                 np_bayes_clustering(level_strains,level_reads,read_pairs,n,abundance,posterior);
+
+
+                // abundance after clustering
+                for (auto lsiter = level_strains.begin(); lsiter!=level_strains.end(); lsiter++)
+                {
+                    A_posterior[lsiter->strain_seq()] = lsiter->abundance;
+                }
+
+                // abundance delta
+                DoubleL A_delta_max = 0;
+                for (auto lsiter = level_strains.begin(); lsiter!=level_strains.end(); lsiter++)
+                {
+                    DoubleL delta = A_posterior[lsiter->strain_seq()] - A_prior[lsiter->strain_seq()];
+                    if (A_delta_max < delta) A_delta_max = delta;
+                }
 
                 // terminate a strain if its abundance level is lower than tau
                 Z = 0;
                 for_each(abundance.begin(),abundance.end(),[&Z](DoubleL z){Z+=z;});
 
                 Zt = Z*tau;
-
-                Z0 = 0;
-                vector<DoubleL> sa;
-                for_each(level_strains.begin(),level_strains.end(),[&Z0,&sa](Strain& s)
-                         {
-                             Z0 += s.abundance;
-                             sa.push_back(s.abundance);
-                         });
-  
-                Zt0 = min(Z0*tau,Qx(sa,20));
-                Zt0 = min(Zt0,(DoubleL)200);
  
                 vector<vector<Strain>::iterator> delete_strains;
+
+                // collect strains to be deleted
                 int si=0;
                 for (auto s=level_strains.begin(); s!=level_strains.end(); ++s,++si)
                 {
-                    if (abundance[si]<Zt and s->abundance<Zt0 and level_strains.size()>=20)
+
+                    DoubleL delta_abundance = A_posterior[s->strain_seq()] - A_prior[s->strain_seq()];
+
+                    if (abundance[si]<Zt or delta_abundance<0.01*A_delta_max)
                     {
                         delete_strains.push_back(s);
                     }
@@ -423,6 +456,19 @@ void PartialOrderGraph::streaming_clustering(vector<Strain>& strains, ReadPairs&
             {
                 hard_clustering(level_strains,level_reads,new_reads,read_pairs);
             }
+
+if (0){
+        if (!level_strains.empty()){
+            cerr << "------------------------------" << endl
+                 << "after clustering" << endl
+                 << "level: " << level << endl;
+
+            for (auto ls_iter = level_strains.begin(); ls_iter!=level_strains.end(); ls_iter++)
+            {
+                cerr << ls_iter->strain_seq() << "\t" << ls_iter->abundance << endl;
+            }
+        }
+        }
 
             // generate strains at next level
             branching = false;
@@ -450,7 +496,7 @@ void PartialOrderGraph::streaming_clustering(vector<Strain>& strains, ReadPairs&
 
                     if (get<1>((*it)->state)!="$" and oz>0)
                     {
-                        if (oc[oi]<=max(double(tt*zz),3.) and oc[oi]<moc) 
+                        if (oc[oi]<=1. and oc[oi]<moc) 
                         {
                             dd += 1;
                             continue;
@@ -458,7 +504,7 @@ void PartialOrderGraph::streaming_clustering(vector<Strain>& strains, ReadPairs&
 
                         Strain ns = *s;
                         ns.path_extend(*it);
-                        /*
+                        
                         if (oc[oi]>0)
                         {
                             ns.abundance = s->abundance*oc[oi]/oz;
@@ -466,11 +512,6 @@ void PartialOrderGraph::streaming_clustering(vector<Strain>& strains, ReadPairs&
                         else
                         {
                             ns.abundance = oz*min(0.01,(double)tau);
-                        }//*/
-                        if (oc[oi]==moc){
-                            ns.abundance = s->abundance;
-                        }else{
-                            ns.abundance = s->abundance*oc[oi]/moc;
                         }
                         sublevel_strains.push_back(ns);
                     }else
@@ -488,11 +529,11 @@ void PartialOrderGraph::streaming_clustering(vector<Strain>& strains, ReadPairs&
             }
 
             // maker sure the candidate set not too large
-            if (sublevel_strains.size()>50)
+            if (sublevel_strains.size()>80)
             {
                 vector<DoubleL> ssa;
                 for_each(sublevel_strains.begin(),sublevel_strains.end(),[&ssa](Strain& x){ssa.push_back(x.abundance);});
-                Zt0 = Qx(ssa,50);
+                Zt0 = Qx(ssa,80);
 
                 vector<vector<Strain>::iterator> delete_strains;
                 for (auto s=sublevel_strains.begin(); s!=sublevel_strains.end(); ++s)
@@ -669,11 +710,12 @@ void PartialOrderGraph::infer_strains(vector<Strain>& strains, ReadPairs& read_p
 
 void PartialOrderGraph::read_assign(vector<Strain>& strains, vector<ReadAux>& reads, int n)
 {
-    n = min(n,10000/(int)reads.size());
+    n = min(n,40000/(int)reads.size());
     vector<vector<DoubleL>> assign(reads.size(),vector<DoubleL>(strains.size(),0));
 
     std::random_device rd;
-    std::mt19937 gen(rd());
+    //std::mt19937 gen(rd());
+    std::mt19937 gen(1234);
 
     int id,i,j,c,m;
     vector<DoubleL> a,p;
@@ -736,10 +778,11 @@ void PartialOrderGraph::read_assign(vector<Strain>& strains, vector<AlignRead>& 
     int read_size = 0;
     for_each(reads.begin(),reads.end(),[&read_size](AlignRead& ar){read_size+=get<4>(ar);});
 
-    n = min(n,10000/(int)read_size);
+    n = min(n,40000/(int)read_size);
 
     std::random_device rd;
-    std::mt19937 gen(rd());
+    //std::mt19937 gen(rd());
+    std::mt19937 gen(1234);
 
     int id,i,j,c,m,cn,uid;
     vector<DoubleL> a,p;

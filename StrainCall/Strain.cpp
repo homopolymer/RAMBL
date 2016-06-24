@@ -18,7 +18,7 @@ Strain::Strain()
                 sub_count[Substitution(A[i],A[j])] = 100;
             }else
             {
-                sub_count[Substitution(A[i],A[j])] = 1;
+                sub_count[Substitution(A[i],A[j])] = .01;
             }
         }
     }

@@ -489,7 +489,7 @@ void load_mapping_reads(string& gene_seq, string& mapping_file, int mq, int rl, 
     string cmd;
     DoubleL rho;
     std::random_device rd;
-    std::mt19937 gen(rd());
+    std::mt19937 gen(1234);
     std::uniform_real_distribution<> dicer(0, 1);
     
     // extract reads to temporary file
@@ -1032,18 +1032,15 @@ int main(int argc, char** argv)
             int si = 0;
             for (auto s=strains.begin(); s!=strains.end(); ++s,++si)
             {
-                // comment out by Feng Zeng, October 3 2015
-                //if (s->abundance>=parameters->tau)
-                // change by Feng Zeng, October 3 2015
-                if (s->abundance>=parameters->tau and aux_reads.size()*s->abundance>10)
+                if (s->abundance>=parameters->tau)
                 {   
                     // change by Feng Zeng, Jan 22, 2016
                     GenomeSeq out_seq = gene_seq0;
                     //out_seq.replace(it->p0-1, it->p1-it->p0+1, s->plain_seq());
                     out_seq = s->plain_seq();
 
-                    cout << ">c" << it->gn << "" << it->p0 << "" << it->p1 << "" << si << " "
-                         << " " << int(aux_reads.size()*s->abundance) << endl;
+                    cout << ">contig" << it->gn << "" << it->p0 << "" << it->p1 << "" << si 
+                         << endl;
                     cout << out_seq << endl;
                 }
             }
