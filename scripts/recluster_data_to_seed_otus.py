@@ -22,9 +22,9 @@ def view_sam(sam,header=True):
     '''view sam file
     '''
     if header == True:
-        p = subprocess.Popen(['samtools','view','-h','-F1804',sam],stdout=subprocess.PIPE,stderr=write_devnull)    
+        p = subprocess.Popen(['samtools','view','-h','-SF1804',sam],stdout=subprocess.PIPE,stderr=write_devnull)    
     else:
-        p = subprocess.Popen(['samtools','view','-F1804',sam],stdout=subprocess.PIPE,stderr=write_devnull)
+        p = subprocess.Popen(['samtools','view','-SF1804',sam],stdout=subprocess.PIPE,stderr=write_devnull)
     return p.stdout
 
 def merge_sam(samlist,header=False):

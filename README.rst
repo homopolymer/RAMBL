@@ -22,7 +22,7 @@ Following tools are all assumed installed and could be found in system environme
 * Python >= 2.7.10
 * GCC >= 4.9.1
 * Bowtie2 >= 2.2.4
-* Samtools >= 1.2
+* Samtools == 0.1.19
 * Bedtools >= 2.24.0
 * Sickle >= 1.33
 * Seqtk >= 1.0
